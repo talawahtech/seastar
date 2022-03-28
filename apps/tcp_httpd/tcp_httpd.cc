@@ -121,8 +121,18 @@ int main(int ac, char** av) {
             });
 
             // Start listening in the background.
-            (void)server->invoke_on_all(&tcp_server::listen, ipv4_addr{port});
-
+            // Use cpu_id->shard_id mapping to ensure that socket 0 is started on cpu 0 etc for SO_ATTACH_REUSEPORT_CBPF to work efficiently
+            std::optional<std::vector<unsigned>> cpu_to_shard = smp::get_cpu_to_shard_mapping();
+            if (cpu_to_shard){                
+                auto all_cpus = smp::all_cpus();
+                return do_for_each(all_cpus, [server = std::move(server), cpu_to_shard = std::move(cpu_to_shard), port] (auto cpu_id) {
+                    auto shard_id = cpu_to_shard.value()[cpu_id];
+                    std::cout << "CPU: " << cpu_id << ", Socket: " << cpu_id << ", Shard: " << shard_id << "\n";
+                    return server->invoke_on(shard_id, &tcp_server::listen, ipv4_addr{port});
+                });
+            } else {
+                return server->invoke_on_all(&tcp_server::listen, ipv4_addr{port});
+            }
         }).then([port] {
             std::cout << "Seastar TCP server listening on port " << port << " ...\n";
         });
