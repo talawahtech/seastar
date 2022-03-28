@@ -3558,6 +3558,7 @@ thread_local std::unique_ptr<reactor, reactor_deleter> reactor_holder;
 
 thread_local smp_message_queue** smp::_qs;
 thread_local std::thread::id smp::_tmain;
+thread_local std::optional<std::vector<unsigned>> smp::_cpu_to_shard_mapping;
 unsigned smp::count = 0;
 
 void smp::start_all_queues()
@@ -4157,6 +4158,18 @@ void smp::configure(const smp_options& smp_opts, const reactor_options& reactor_
               _exit(1);
           }
         });
+    }
+
+    // store cpu topology for future lookups
+    if (thread_affinity){
+        // Convert mapping from shard_id->cpu_id to cpu_id->shard_id
+        std::vector<unsigned> cpu_to_shard(smp::count);
+        for(unsigned i = 0; i < smp::count; ++i){
+            cpu_to_shard[allocations[i].cpu_id] = i;
+        }
+        smp::_cpu_to_shard_mapping = std::make_optional(std::move(cpu_to_shard));
+    } else {
+        smp::_cpu_to_shard_mapping = std::nullopt;
     }
 
     init_default_smp_service_group(0);

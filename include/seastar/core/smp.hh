@@ -304,6 +304,7 @@ class smp : public std::enable_shared_from_this<smp> {
     std::unique_ptr<smp_message_queue*[], qs_deleter> _qs_owner;
     static thread_local smp_message_queue**_qs;
     static thread_local std::thread::id _tmain;
+    static thread_local std::optional<std::vector<unsigned>> _cpu_to_shard_mapping;
     bool _using_dpdk = false;
 
     template <typename Func>
@@ -318,6 +319,7 @@ public:
     void arrive_at_event_loop_end();
     void join_all();
     static bool main_thread() { return std::this_thread::get_id() == _tmain; }
+    static std::optional<std::vector<unsigned>> get_cpu_to_shard_mapping() { return _cpu_to_shard_mapping; }
 
     /// Runs a function on a remote core.
     ///
