@@ -339,6 +339,7 @@ struct listen_options {
         lba = server_socket::load_balancing_algorithm::fixed;
         fixed_cpu = cpu;
     }
+    bool reuse_port = false;
 };
 
 class network_interface {
