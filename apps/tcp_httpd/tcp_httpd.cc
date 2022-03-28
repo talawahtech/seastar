@@ -36,6 +36,7 @@ public:
         lo.proto = transport::TCP;
         lo.reuse_address = true;
         lo.reuse_port = true;
+        lo.reuse_port_cbpf = true;
         _tcp_listeners.push_back(seastar::listen(make_ipv4_address(addr), lo));
         do_accepts(_tcp_listeners);
 

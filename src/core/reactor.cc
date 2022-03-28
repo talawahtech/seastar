@@ -86,6 +86,7 @@
 #include <linux/types.h> // for xfs, below
 #include <sys/ioctl.h>
 #include <linux/perf_event.h>
+#include <linux/filter.h> // for SO_ATTACH_REUSEPORT_CBPF
 #include <xfs/linux.h>
 #define min min    /* prevent xfs.h from defining min() as a macro */
 #include <xfs/xfs.h>
@@ -1502,6 +1503,19 @@ reactor::posix_listen(socket_address sa, listen_options opts) {
         fd.listen(opts.listen_backlog);
     } catch (const std::system_error& s) {
         throw std::system_error(s.code(), fmt::format("posix_listen failed for address {}", sa));
+    }
+
+    if (_reuseport && opts.reuse_port && opts.reuse_port_cbpf && !sa.is_af_unix()){
+        // Assigns incoming connections to SO_REUSEPORT sockets based on the ID of the CPU that handled softirq processing.
+        // CPU 0 -> socket 0, CPU 2 -> socket 2. Note that the socket number is determined by the order in which sockets
+        // are added to the SO_REUSEPORT group.
+        struct sock_filter filter[] = {
+            { BPF_LD | BPF_W | BPF_ABS, 0, 0, (unsigned) SKF_AD_OFF + SKF_AD_CPU },
+            { BPF_RET | BPF_A, 0, 0, 0 }
+        };
+        struct sock_fprog prog = { .len = sizeof(filter) / sizeof(filter[0]), .filter = filter };
+
+        fd.setsockopt(SOL_SOCKET, SO_ATTACH_REUSEPORT_CBPF, &prog, sizeof(prog));
     }
 
     return pollable_fd(std::move(fd));

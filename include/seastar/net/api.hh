@@ -340,6 +340,7 @@ struct listen_options {
         fixed_cpu = cpu;
     }
     bool reuse_port = false;
+    bool reuse_port_cbpf = false;
 };
 
 class network_interface {
