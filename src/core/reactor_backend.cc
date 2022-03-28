@@ -770,6 +770,30 @@ void reactor_backend_epoll::maybe_switch_steady_clock_timers(int timeout, file_d
     }
 }
 
+// If epoll_pwait2 is available in the kernel, but not in glibc, this wrapper can be used to make the syscall
+// For simplicity sake the timeout is still an integer, but it reflects the timeout in microseconds instead of epoll_pwait's milliseconds
+int epoll_pwait_us(int epfd, struct epoll_event* events, int maxevents, int timeout, const sigset_t *sigmask) {
+#ifdef __NR_epoll_pwait2
+    struct timespec timeout_ts = {};
+    struct timespec* timeout_ts_ptr;
+
+    if (timeout == -1){
+        timeout_ts_ptr = nullptr;
+    }
+    else {
+        timeout_ts.tv_sec = 0;
+        timeout_ts.tv_nsec = timeout * 1000;
+        timeout_ts_ptr = &timeout_ts;
+    }
+
+    return ::syscall(__NR_epoll_pwait2, epfd, events, maxevents, timeout_ts_ptr, sigmask, _NSIG / 8);
+#else
+    // TODO: Add a fallback to epoll_wait that rounds values up to ms?
+    errno = ENOSYS;
+    return -1;
+#endif
+}
+
 bool
 reactor_backend_epoll::wait_and_process(int timeout, const sigset_t* active_sigmask) {
     // If we plan to sleep, disable the timer thread steady clock timer (since it won't
@@ -785,7 +809,7 @@ reactor_backend_epoll::wait_and_process(int timeout, const sigset_t* active_sigm
       }
     });
     std::array<epoll_event, 128> eevt;
-    int nr = ::epoll_pwait(_epollfd.get(), eevt.data(), eevt.size(), timeout, active_sigmask);
+    int nr = epoll_pwait_us(_epollfd.get(), eevt.data(), eevt.size(), timeout, active_sigmask);
     if (nr == -1 && errno == EINTR) {
         return false; // gdb can cause this
     }
@@ -876,7 +900,7 @@ bool reactor_backend_epoll::kernel_submit_work() {
     bool result = false;
     _storage_context.submit_work();
     if (_need_epoll_events) {
-        result |= wait_and_process(0, nullptr);
+        result |= wait_and_process(100, nullptr);
     }
 
     result |= complete_hrtimer();
