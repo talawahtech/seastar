@@ -145,14 +145,17 @@ class posix_ap_server_socket_impl : public server_socket_impl {
     int _protocol;
     socket_address _sa;
     std::pmr::polymorphic_allocator<char>* _allocator;
+    server_socket::workload _workload = server_socket::workload::default_;
 public:
     explicit posix_ap_server_socket_impl(int protocol, socket_address sa, std::pmr::polymorphic_allocator<char>* allocator = memory::malloc_allocator) : _protocol(protocol), _sa(sa), _allocator(allocator) {}
+    explicit posix_ap_server_socket_impl(int protocol, socket_address sa, std::pmr::polymorphic_allocator<char>* allocator, server_socket::workload workload) : 
+        _protocol(protocol), _sa(sa), _allocator(allocator), _workload(workload) {}
     virtual future<accept_result> accept() override;
     virtual void abort_accept() override;
     socket_address local_address() const override {
         return _sa;
     }
-    static void move_connected_socket(int protocol, socket_address sa, pollable_fd fd, socket_address addr, conntrack::handle handle, std::pmr::polymorphic_allocator<char>* allocator);
+    static void move_connected_socket(int protocol, socket_address sa, pollable_fd fd, socket_address addr, conntrack::handle handle, std::pmr::polymorphic_allocator<char>* allocator, server_socket::workload workload);
 
     template <typename T>
     friend class std::hash;
@@ -166,10 +169,15 @@ class posix_server_socket_impl : public server_socket_impl {
     server_socket::load_balancing_algorithm _lba;
     shard_id _fixed_cpu;
     std::pmr::polymorphic_allocator<char>* _allocator;
+    server_socket::workload _workload = server_socket::workload::default_;
 public:
     explicit posix_server_socket_impl(int protocol, socket_address sa, pollable_fd lfd,
         server_socket::load_balancing_algorithm lba, shard_id fixed_cpu,
         std::pmr::polymorphic_allocator<char>* allocator=memory::malloc_allocator) : _sa(sa), _protocol(protocol), _lfd(std::move(lfd)), _lba(lba), _fixed_cpu(fixed_cpu), _allocator(allocator) {}
+    explicit posix_server_socket_impl(int protocol, socket_address sa, pollable_fd lfd,
+        server_socket::load_balancing_algorithm lba, shard_id fixed_cpu,
+        std::pmr::polymorphic_allocator<char>* allocator, server_socket::workload workload) : 
+        _sa(sa), _protocol(protocol), _lfd(std::move(lfd)), _lba(lba), _fixed_cpu(fixed_cpu), _allocator(allocator), _workload(workload) {}
     virtual future<accept_result> accept() override;
     virtual void abort_accept() override;
     virtual socket_address local_address() const override;
@@ -180,9 +188,13 @@ class posix_reuseport_server_socket_impl : public server_socket_impl {
     int _protocol;
     pollable_fd _lfd;
     std::pmr::polymorphic_allocator<char>* _allocator;
+    server_socket::workload _workload = server_socket::workload::default_;
 public:
     explicit posix_reuseport_server_socket_impl(int protocol, socket_address sa, pollable_fd lfd,
         std::pmr::polymorphic_allocator<char>* allocator=memory::malloc_allocator) : _sa(sa), _protocol(protocol), _lfd(std::move(lfd)), _allocator(allocator) {}
+    explicit posix_reuseport_server_socket_impl(int protocol, socket_address sa, pollable_fd lfd,
+        std::pmr::polymorphic_allocator<char>* allocator, server_socket::workload workload) : _sa(sa), _protocol(protocol), _lfd(std::move(lfd)), _allocator(allocator), 
+        _workload(workload) {}
     virtual future<accept_result> accept() override;
     virtual void abort_accept() override;
     virtual socket_address local_address() const override;

@@ -87,6 +87,7 @@ class native_connected_socket_impl : public connected_socket_impl {
     lw_shared_ptr<typename Protocol::connection> _conn;
     class native_data_source_impl;
     class native_data_sink_impl;
+    server_socket::workload _workload = server_socket::workload::default_;
 public:
     explicit native_connected_socket_impl(lw_shared_ptr<typename Protocol::connection> conn)
         : _conn(std::move(conn)) {}
@@ -104,6 +105,7 @@ public:
     int get_sockopt(int level, int optname, void* data, size_t len) const override;
     void set_sockopt(int level, int optname, const void* data, size_t len) override;
     socket_address local_address() const noexcept override;
+    server_socket::workload get_workload() const noexcept override;
 };
 
 template <typename Protocol>
@@ -268,6 +270,11 @@ int native_connected_socket_impl<Protocol>::get_sockopt(int level, int optname, 
 template<typename Protocol>
 socket_address native_connected_socket_impl<Protocol>::local_address() const noexcept {
     return {_conn->local_ip(), _conn->local_port()};
+}
+
+template<typename Protocol>
+server_socket::workload native_connected_socket_impl<Protocol>::get_workload() const noexcept {
+    return _workload;
 }
 
 }

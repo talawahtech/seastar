@@ -1589,6 +1589,9 @@ public:
     socket_address local_address() const noexcept override {
         return _session->socket().local_address();
     }
+    server_socket::workload get_workload() const noexcept override {
+        return _session->socket().get_workload();
+    }
 
 };
 

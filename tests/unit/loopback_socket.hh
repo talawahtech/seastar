@@ -146,6 +146,7 @@ public:
 class loopback_connected_socket_impl : public net::connected_socket_impl {
     foreign_ptr<lw_shared_ptr<loopback_buffer>> _tx;
     lw_shared_ptr<loopback_buffer> _rx;
+    server_socket::workload _workload = server_socket::workload::default_;
 public:
     loopback_connected_socket_impl(foreign_ptr<lw_shared_ptr<loopback_buffer>> tx, lw_shared_ptr<loopback_buffer> rx)
             : _tx(std::move(tx)), _rx(std::move(rx)) {
@@ -187,6 +188,9 @@ public:
     socket_address local_address() const noexcept override {
         // dummy
         return {};
+    }
+    server_socket::workload get_workload() const noexcept override {
+        return _workload;
     }
 };
 

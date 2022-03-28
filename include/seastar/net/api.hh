@@ -297,6 +297,11 @@ public:
         fixed,
         default_ = connection_distribution
     };
+    enum class workload { 
+        rpc, 
+        req_resp,
+        default_ = rpc
+    };
     /// Constructs a \c server_socket not corresponding to a connection
     server_socket() noexcept;
     /// \cond internal
@@ -339,6 +344,7 @@ struct listen_options {
         lba = server_socket::load_balancing_algorithm::fixed;
         fixed_cpu = cpu;
     }
+    server_socket::workload workload = server_socket::workload::default_;
 };
 
 class network_interface {
